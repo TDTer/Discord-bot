@@ -17,6 +17,10 @@ import { getRandomDish } from './dishes.js';
 const app = express();
 // Get port, or default to 3000
 const PORT = process.env.PORT || 3000;
+
+// Health check (for uptime pingers / Render)
+app.get('/', (req, res) => res.send('ok'));
+
 // To keep track of our active games
 const activeGames = {};
 
