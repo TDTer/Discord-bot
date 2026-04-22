@@ -32,7 +32,7 @@ function sendLunchReminder(channelId) {
       components: [
         {
           type: MessageComponentTypes.TEXT_DISPLAY,
-          content: `@here ⏰ Lunch time! How about **${getRandomDish()}** today? ${getRandomEmoji()}`,
+          content: `@here ⏰ Đến giờ ăn trưa rồi các vợ! How about **${getRandomDish()}** today? ${getRandomEmoji()}`,
         },
       ],
       allowed_mentions: { parse: ['everyone'] },
