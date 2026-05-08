@@ -70,6 +70,32 @@ const REMINDER_COMMAND = {
   contexts: [0],
 };
 
-const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, LUNCH_COMMAND, REMINDER_COMMAND];
+// Suggest top 5 restaurants near the configured location
+const LUNCH_NEARBY_COMMAND = {
+  name: 'lunch-nearby',
+  description: 'Top 5 nearby restaurants (rating ≥4.0, open now, within 1km)',
+  type: 1,
+  integration_types: [0],
+  contexts: [0],
+};
+
+// Announce that food has arrived
+const DELIVERED_COMMAND = {
+  name: 'delivered',
+  description: 'Announce that the food has been delivered',
+  options: [
+    {
+      type: 3,
+      name: 'location',
+      description: 'Where to pick it up (optional)',
+      required: false,
+    },
+  ],
+  type: 1,
+  integration_types: [0],
+  contexts: [0],
+};
+
+const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, LUNCH_COMMAND, REMINDER_COMMAND, DELIVERED_COMMAND, LUNCH_NEARBY_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

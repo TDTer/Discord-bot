@@ -12,6 +12,7 @@ import {
 import { getRandomEmoji, DiscordRequest } from './utils.js';
 import { getShuffledOptions, getResult } from './game.js';
 import { getRandomDish } from './dishes.js';
+import { searchNearbyRestaurants } from './places.js';
 
 // Create an express app
 const app = express();
@@ -168,6 +169,85 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
               content: `✅ Lunch reminder set for **${time}** daily (${LUNCH_TZ}).`,
             },
           ],
+        },
+      });
+    }
+
+    if (name === 'lunch-nearby') {
+      const latlng = (process.env.LUNCH_LATLNG || '').trim();
+      const m = latlng.match(/^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/);
+      if (!m) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            flags: InteractionResponseFlags.IS_COMPONENTS_V2 | InteractionResponseFlags.EPHEMERAL,
+            components: [
+              {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: '⚠️ `LUNCH_LATLNG` chưa cấu hình (định dạng `lat,lng`).',
+              },
+            ],
+          },
+        });
+      }
+      const lat = parseFloat(m[1]);
+      const lng = parseFloat(m[2]);
+
+      // Acknowledge first; we'll send the result via followup
+      res.send({ type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE });
+
+      try {
+        const places = await searchNearbyRestaurants({ lat, lng, radius: 1000, minRating: 4.0, openNowOnly: true, limit: 5 });
+
+        const content = places.length === 0
+          ? '😢 Không tìm thấy quán nào (rating ≥4.0, đang mở, trong 1km).'
+          : '🍽️ **Top quán gần đây (≥4.0★, đang mở):**\n\n' +
+            places.map((p, i) => {
+              const name = p.displayName?.text || 'Unknown';
+              const rating = p.rating ? `${p.rating}★` : '–';
+              const reviews = p.userRatingCount ? ` (${p.userRatingCount})` : '';
+              const addr = p.formattedAddress || '';
+              const url = p.googleMapsUri || '';
+              return `**${i + 1}. [${name}](${url})** — ${rating}${reviews}\n${addr}`;
+            }).join('\n\n');
+
+        await DiscordRequest(`webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`, {
+          method: 'PATCH',
+          body: {
+            flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+            components: [{ type: MessageComponentTypes.TEXT_DISPLAY, content }],
+          },
+        });
+      } catch (err) {
+        console.error('lunch-nearby failed:', err);
+        await DiscordRequest(`webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`, {
+          method: 'PATCH',
+          body: {
+            flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+            components: [{ type: MessageComponentTypes.TEXT_DISPLAY, content: `⚠️ Lỗi gọi Places API: ${err.message}` }],
+          },
+        });
+      }
+      return;
+    }
+
+    if (name === 'delivered') {
+      const location = (data.options?.[0]?.value || '').trim();
+      const context = req.body.context;
+      const userId = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const locationText = location ? ` tại **${location}**` : '';
+
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+          components: [
+            {
+              type: MessageComponentTypes.TEXT_DISPLAY,
+              content: `@here 🛵🍱 Đồ ăn đã đến${locationText}! Xuống lấy đi các vợ ${getRandomEmoji()}\n— thông báo bởi <@${userId}>`,
+            },
+          ],
+          allowed_mentions: { parse: ['everyone'], users: [userId] },
         },
       });
     }
