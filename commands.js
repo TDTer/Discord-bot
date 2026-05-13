@@ -70,6 +70,38 @@ const REMINDER_COMMAND = {
   contexts: [0],
 };
 
+// Manage the restaurant blacklist (excluded from /lunch-nearby)
+const BLACKLIST_COMMAND = {
+  name: 'blacklist',
+  description: 'Manage the restaurant blacklist',
+  options: [
+    {
+      type: 1, // SUB_COMMAND
+      name: 'add',
+      description: 'Add a restaurant name to the blacklist',
+      options: [
+        { type: 3, name: 'name', description: 'Restaurant name (case-insensitive substring match)', required: true },
+      ],
+    },
+    {
+      type: 1,
+      name: 'remove',
+      description: 'Remove a restaurant from the blacklist',
+      options: [
+        { type: 3, name: 'name', description: 'Exact entry name to remove', required: true },
+      ],
+    },
+    {
+      type: 1,
+      name: 'list',
+      description: 'Show all blacklisted restaurants',
+    },
+  ],
+  type: 1,
+  integration_types: [0],
+  contexts: [0],
+};
+
 // Suggest top 5 restaurants near the configured location
 const LUNCH_NEARBY_COMMAND = {
   name: 'lunch-nearby',
@@ -96,6 +128,6 @@ const DELIVERED_COMMAND = {
   contexts: [0],
 };
 
-const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, LUNCH_COMMAND, REMINDER_COMMAND, DELIVERED_COMMAND, LUNCH_NEARBY_COMMAND];
+const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND, LUNCH_COMMAND, REMINDER_COMMAND, DELIVERED_COMMAND, LUNCH_NEARBY_COMMAND, BLACKLIST_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

@@ -13,6 +13,7 @@ import { getRandomEmoji, DiscordRequest } from './utils.js';
 import { getShuffledOptions, getResult } from './game.js';
 import { getRandomDish } from './dishes.js';
 import { searchNearbyRestaurants } from './places.js';
+import { addToBlacklist, removeFromBlacklist, getBlacklist, isBlacklisted } from './blacklist.js';
 
 // Create an express app
 const app = express();
@@ -173,6 +174,39 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
     }
 
+    if (name === 'blacklist') {
+      const sub = data.options?.[0];
+      const subName = sub?.name;
+      let content;
+
+      if (subName === 'add') {
+        const target = sub.options?.[0]?.value || '';
+        content = addToBlacklist(target)
+          ? `🚫 Added **${target}** to blacklist.`
+          : `ℹ️ **${target}** already in blacklist (or empty).`;
+      } else if (subName === 'remove') {
+        const target = sub.options?.[0]?.value || '';
+        content = removeFromBlacklist(target)
+          ? `✅ Removed **${target}** from blacklist.`
+          : `ℹ️ **${target}** not found in blacklist.`;
+      } else if (subName === 'list') {
+        const list = getBlacklist();
+        content = list.length === 0
+          ? '📭 Blacklist is empty.'
+          : '🚫 **Blacklist:**\n' + list.map((b, i) => `${i + 1}. ${b}`).join('\n');
+      } else {
+        content = '⚠️ Unknown subcommand.';
+      }
+
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          flags: InteractionResponseFlags.IS_COMPONENTS_V2 | InteractionResponseFlags.EPHEMERAL,
+          components: [{ type: MessageComponentTypes.TEXT_DISPLAY, content }],
+        },
+      });
+    }
+
     if (name === 'lunch-nearby') {
       const latlng = (process.env.LUNCH_LATLNG || '').trim();
       const m = latlng.match(/^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/);
@@ -197,7 +231,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       res.send({ type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE });
 
       try {
-        const places = await searchNearbyRestaurants({ lat, lng, radius: 1000, minRating: 4.0, openNowOnly: true, limit: 5 });
+        const raw = await searchNearbyRestaurants({ lat, lng, radius: 1000, minRating: 4.0, openNowOnly: true, limit: 20 });
+        const places = raw.filter((p) => !isBlacklisted(p.displayName?.text)).slice(0, 5);
 
         const content = places.length === 0
           ? '😢 Không tìm thấy quán nào (rating ≥4.0, đang mở, trong 1km).'
